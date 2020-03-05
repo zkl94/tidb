@@ -14,6 +14,7 @@
 package executor
 
 import (
+	"bytes"
 	"context"
 	"sort"
 
@@ -129,6 +130,14 @@ func (e *BatchPointGetExec) initialize(ctx context.Context) error {
 			dedup[s] = struct{}{}
 			keys = append(keys, idxKey)
 		}
+		if e.keepOrder {
+			sort.Slice(keys, func(i, j int) bool {
+				if e.desc {
+					return bytes.Compare(keys[i], keys[j]) < 0
+				}
+				return bytes.Compare(keys[i], keys[j]) > 0
+			})
+		}
 
 		// Fetch all handles.
 		handleVals, err1 := batchGetter.BatchGet(ctx, keys)
@@ -162,9 +171,7 @@ func (e *BatchPointGetExec) initialize(ctx context.Context) error {
 			// Wait `UPDATE` finished
 			failpoint.InjectContext(ctx, "batchPointGetRepeatableReadTest-step2", nil)
 		})
-	}
-
-	if e.keepOrder {
+	} else if e.keepOrder {
 		sort.Slice(e.handles, func(i int, j int) bool {
 			if e.desc {
 				return e.handles[i] > e.handles[j]
@@ -201,6 +208,14 @@ func (e *BatchPointGetExec) initialize(ctx context.Context) error {
 			// it's safe to read it without mutex.
 			for _, key := range keys {
 				txnCtx.SetPessimisticLockCache(key, lctx.Values[string(key)])
+			}
+			// Overwrite with buffer value.
+			buffer := txn.GetMemBuffer()
+			for _, key := range keys {
+				val, err1 := buffer.Get(ctx, key)
+				if err1 != kv.ErrNotExist {
+					lctx.Values[string(key)] = val
+				}
 			}
 			values = lctx.Values
 		}
