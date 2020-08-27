@@ -1514,6 +1514,7 @@ func (s *session) NewTxn(ctx context.Context) error {
 	}
 
 	txn, err := s.store.Begin()
+	// logutil.BgLogger().Info("hello transaction (session)")
 	if err != nil {
 		return err
 	}
@@ -2185,6 +2186,9 @@ func (s *session) PrepareTxnCtx(ctx context.Context) {
 		CreateTime:    time.Now(),
 		ShardStep:     int(s.sessionVars.ShardAllocateStep),
 	}
+
+	logutil.BgLogger().Info("hello transaction")
+
 	if !s.sessionVars.IsAutocommit() || s.sessionVars.RetryInfo.Retrying {
 		pessTxnConf := config.GetGlobalConfig().PessimisticTxn
 		if pessTxnConf.Enable {

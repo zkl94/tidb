@@ -57,6 +57,7 @@ type TxnState struct {
 
 func (st *TxnState) init() {
 	st.mutations = make(map[int64]*binlog.TableMutation)
+	// logutil.BgLogger().Info("hello transaction")
 }
 
 func (st *TxnState) initStmtBuf() {
